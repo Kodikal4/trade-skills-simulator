@@ -16,8 +16,7 @@ jobs:
       - name: Set up Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-node-version: '22.x'
-          cache: 'npm'
+          node-version: '22.x'
 
       - name: Install Application Dependencies
         run: npm install
@@ -25,5 +24,5 @@ jobs:
       - name: Deploy Payload to Azure Web App Container
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'trade-skills-admin'
+          app-name: 'trade-skills/admin'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
