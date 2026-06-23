@@ -193,12 +193,15 @@
     <script>
         const tbody = document.getElementById('database-rows');
         const form = document.getElementById('record-form');
+    
+        // Target your explicit live Azure Backend API URL directly
+        const BACKEND_URL = 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
 
         // Fetch and display database rows instantly upon console mount
         async function refreshDatabaseView() {
             try {
-                // FIX: Point to your actual Express endpoint
-                const response = await fetch('/api/trades'); 
+                // Point fetch to the absolute Azure server domain route
+                const response = await fetch(`${BACKEND_URL}/api/trades`); 
                 if (!response.ok) throw new Error('API Sync Fault');
                 
                 const data = await response.json();
@@ -230,15 +233,14 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Build payload matching your server's expected properties
             const payload = {
                 sector: document.getElementById('trade_type').value,
-                allocation: document.getElementById('failure_mode').value // Maps temporary frontend form value to your db script schema
+                allocation: document.getElementById('failure_mode').value 
             };
 
             try {
-                // FIX: Point to your actual Express POST endpoint
-                const response = await fetch('/api/trades', {
+                // Point post submission directly to your Azure infrastructure layer
+                const response = await fetch(`${BACKEND_URL}/api/trades`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
