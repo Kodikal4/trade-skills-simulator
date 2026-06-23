@@ -235,7 +235,11 @@
 
             const payload = {
                 sector: document.getElementById('trade_type').value,
-                allocation: document.getElementById('failure_mode').value 
+                component: document.getElementById('component').value,
+                symptom: document.getElementById('symptom').value,
+                question: document.getElementById('question').value,
+                failure_mode: document.getElementById('failure_mode').value,
+                explanation: document.getElementById('explanation').value
             };
 
             try {
