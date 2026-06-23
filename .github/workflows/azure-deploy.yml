@@ -24,5 +24,5 @@ jobs:
       - name: Deploy Payload to Azure Web App Container
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'trade-skills/admin'
+          app-name: 'trade-skills'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
