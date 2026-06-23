@@ -191,122 +191,73 @@
     </div>
 
     <script>
+        const tbody = document.getElementById('database-rows');
+        const form = document.getElementById('record-form');
+
         // Fetch and display database rows instantly upon console mount
         async function refreshDatabaseView() {
-            const tbody = document.getElementById('database-rows');
             try {
-                const response = await fetch('/api/getChallenges?trade_type=all');
+                // FIX: Point to your actual Express endpoint
+                const response = await fetch('/api/trades'); 
                 if (!response.ok) throw new Error('API Sync Fault');
                 
                 const data = await response.json();
                 tbody.innerHTML = ''; // Wipe loading placeholder
 
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No records found. Add an entry above!</td></tr>`;
+                    return;
+                }
+
                 data.forEach(row => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><span class="badge">#${row.id}</span></td>
-                        <td><strong>${row.trade_type}</strong></td>
+                        <td><span class="badge">#${row.id || 'N/A'}</span></td>
+                        <td><strong>${row.trade_type || row.sector || 'N/A'}</strong></td>
                         <td style="color: var(--accent-blue); font-weight:600;">${row.component}</td>
                         <td>${row.symptom}</td>
-                        <td><em>${row.failure_mode}</em></td>
+                        <td><em>${row.failure_mode || row.allocation || 'N/A'}</em></td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Failed to fetch data stream from cloud database layer.</td></tr>`;
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ef4444;">Failed to fetch data stream from cloud database layer.</td></tr>`;
             }
         }
 
         // Handle writing data entries straight to the cloud database table on submission
-        document.getElementById('record-form').addEventListener('submit', async (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // Build payload matching your server's expected properties
             const payload = {
-                trade_type: document.getElementById('trade_type').value,
-                component: document.getElementById('component').value,
-                symptom: document.getElementById('symptom').value,
-                question: document.getElementById('question').value,
-                failure_mode: document.getElementById('failure_mode').value,
-                explanation: document.getElementById('explanation').value,
-                choices: [document.getElementById('failure_mode').value, "Alternative Fail A", "Alternative Fail B", "Alternative Fail C"]
+                sector: document.getElementById('trade_type').value,
+                allocation: document.getElementById('failure_mode').value // Maps temporary frontend form value to your db script schema
             };
 
             try {
-                const response = await fetch('/api/getChallenges', {
+                // FIX: Point to your actual Express POST endpoint
+                const response = await fetch('/api/trades', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    document.getElementById('record-form').reset();
+                    form.reset();
                     refreshDatabaseView(); // Re-read database immediately to see your new live row
                 } else {
                     alert('Database insert operation rejected.');
                 }
             } catch (err) {
                 console.error(err);
+                alert('Failed to connect to backend api layer.');
             }
         });
 
-        // Initialize view
+        // Initialize view on load
         refreshDatabaseView();
-
-        // 1. Grab all the form inputs from your UI layout
-        const form = document.querySelector('form') || document.getElementById('diagnosticForm'); 
-        const dataTableBody = document.querySelector('tbody');
-
-        // 2. Initialize your local database from the browser cache
-        let tradeRecords = JSON.parse(localStorage.getItem('tradeRecords')) || [];
-
-        // 3. Function to render the data rows into your table grid cleanly
-        function renderTable() {
-            dataTableBody.innerHTML = ''; // Clear the error message or old rows
-            
-            if (tradeRecords.length === 0) {
-                dataTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #888;">No diagnostic records found. Add an entry above!</td></tr>`;
-                return;
-            }
-
-            tradeRecords.forEach((record, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td style="color: #00eafe; font-weight: bold;">${record.sector}</td>
-                    <td>${record.component}</td>
-                    <td>${record.symptom}</td>
-                    <td><span style="color: #ffb700;">${record.failureMode}</span></td>
-                `;
-                dataTableBody.appendChild(row);
-            });
-        }
-
-        // 4. Handle the "Insert Record" button click action
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault(); // Stop the page from reloading
-                
-                // Grab values from your specific UI input boxes
-                const newRecord = {
-                    sector: document.querySelector('select').value, // Heavy Diesel, etc.
-                    component: document.querySelector('input[placeholder*="Common Rail"]').value,
-                    symptom: document.querySelector('textarea[placeholder*="failure presentation"]').value,
-                    failureMode: document.querySelector('input[placeholder*="True root cause"]').value
-                };
-
-                // Push new payload to array and commit to browser storage
-                tradeRecords.push(newRecord);
-                localStorage.setItem('tradeRecords', JSON.stringify(tradeRecords));
-
-                // Reset the input fields and refresh the visual layout grid
-                form.reset();
-                renderTable();
-            });
-        }
-
-        // 5. Initial compile execution run to load saved data immediately on page load
-        renderTable();
-
-</script>
+   </script>
 </body>
 </html>
