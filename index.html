@@ -251,6 +251,62 @@
 
         // Initialize view
         refreshDatabaseView();
-    </script>
+
+        // 1. Grab all the form inputs from your UI layout
+        const form = document.querySelector('form') || document.getElementById('diagnosticForm'); 
+        const dataTableBody = document.querySelector('tbody');
+
+        // 2. Initialize your local database from the browser cache
+        let tradeRecords = JSON.parse(localStorage.getItem('tradeRecords')) || [];
+
+        // 3. Function to render the data rows into your table grid cleanly
+        function renderTable() {
+            dataTableBody.innerHTML = ''; // Clear the error message or old rows
+            
+            if (tradeRecords.length === 0) {
+                dataTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #888;">No diagnostic records found. Add an entry above!</td></tr>`;
+                return;
+            }
+
+            tradeRecords.forEach((record, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td style="color: #00eafe; font-weight: bold;">${record.sector}</td>
+                    <td>${record.component}</td>
+                    <td>${record.symptom}</td>
+                    <td><span style="color: #ffb700;">${record.failureMode}</span></td>
+                `;
+                dataTableBody.appendChild(row);
+            });
+        }
+
+        // 4. Handle the "Insert Record" button click action
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault(); // Stop the page from reloading
+                
+                // Grab values from your specific UI input boxes
+                const newRecord = {
+                    sector: document.querySelector('select').value, // Heavy Diesel, etc.
+                    component: document.querySelector('input[placeholder*="Common Rail"]').value,
+                    symptom: document.querySelector('textarea[placeholder*="failure presentation"]').value,
+                    failureMode: document.querySelector('input[placeholder*="True root cause"]').value
+                };
+
+                // Push new payload to array and commit to browser storage
+                tradeRecords.push(newRecord);
+                localStorage.setItem('tradeRecords', JSON.stringify(tradeRecords));
+
+                // Reset the input fields and refresh the visual layout grid
+                form.reset();
+                renderTable();
+            });
+        }
+
+        // 5. Initial compile execution run to load saved data immediately on page load
+        renderTable();
+
+</script>
 </body>
 </html>
