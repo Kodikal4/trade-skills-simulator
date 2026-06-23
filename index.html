@@ -38,7 +38,6 @@
         h1 { font-size: 1.8rem; color: var(--text-primary); }
         p { color: var(--text-secondary); }
 
-        /* Form Layout */
         .data-entry-form {
             background: var(--bg-surface);
             padding: 1.5rem;
@@ -87,7 +86,6 @@
 
         button:hover { opacity: 0.9; }
 
-        /* Database Grid View */
         .database-grid-container {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -159,6 +157,10 @@
                 <label>Core Diagnostic Question</label>
                 <input type="text" id="question" placeholder="Engineering isolation query..." required>
             </div>
+            <div class="form-group full-width">
+                <label>Multiple Choice Options (Comma Separated)</label>
+                <input type="text" id="choices" placeholder="Option A, Option B, Option C, Option D" required>
+            </div>
             <div class="form-group">
                 <label>Verified Failure Mode (Root Cause)</label>
                 <input type="text" id="failure_mode" placeholder="True root cause mechanical failure" required>
@@ -177,13 +179,14 @@
                         <th style="width: 5%">ID</th>
                         <th style="width: 10%">Sector</th>
                         <th style="width: 15%">Asset Component</th>
-                        <th style="width: 25%">Symptom Matrix</th>
-                        <th style="width: 25%">Verified Failure Mode</th>
+                        <th style="width: 20%">Symptom Matrix</th>
+                        <th style="width: 20%">Verified Failure Mode</th>
+                        <th style="width: 30%">Multiple Choice Options</th>
                     </tr>
                 </thead>
                 <tbody id="database-rows">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">Connecting to PostgreSQL server core instance...</td>
+                        <td colspan="6" style="text-align: center; color: var(--text-secondary);">Connecting to PostgreSQL server core instance...</td>
                     </tr>
                 </tbody>
             </table>
@@ -194,44 +197,56 @@
         const tbody = document.getElementById('database-rows');
         const form = document.getElementById('record-form');
     
-        // Target your explicit live Azure Backend API URL directly
         const BACKEND_URL = 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
 
-        // Fetch and display database rows instantly upon console mount
         async function refreshDatabaseView() {
             try {
-                // Point fetch to the absolute Azure server domain route
                 const response = await fetch(`${BACKEND_URL}/api/trades`); 
                 if (!response.ok) throw new Error('API Sync Fault');
                 
                 const data = await response.json();
-                tbody.innerHTML = ''; // Wipe loading placeholder
+                tbody.innerHTML = ''; 
 
                 if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No records found. Add an entry above!</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No records found. Add an entry above!</td></tr>`;
                     return;
                 }
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
+                    
+                    // Create base columns
                     tr.innerHTML = `
                         <td><span class="badge">#${row.id || 'N/A'}</span></td>
                         <td><strong>${row.trade_type || row.sector || 'N/A'}</strong></td>
                         <td style="color: var(--accent-blue); font-weight:600;">${row.component}</td>
                         <td>${row.symptom}</td>
-                        <td><em>${row.failure_mode || row.allocation || 'N/A'}</em></td>
+                        <td><em>${row.failure_mode || 'N/A'}</em></td>
                     `;
+
+                    // Create choice display element dynamically 
+                    const choicesCell = document.createElement('td');
+                    if (row.choices && Array.isArray(row.choices)) {
+                        choicesCell.innerHTML = row.choices.map(opt => `<div style="margin-bottom:4px; font-size:0.85rem; color:var(--text-secondary);">• ${opt}</div>`).join('');
+                    } else {
+                        choicesCell.textContent = 'N/A';
+                        choicesCell.style.color = 'var(--text-secondary)';
+                    }
+                    
+                    tr.appendChild(choicesCell);
                     tbody.appendChild(tr);
                 });
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ef4444;">Failed to fetch data stream from cloud database layer.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to fetch data stream from cloud database layer.</td></tr>`;
             }
         }
 
-        // Handle writing data entries straight to the cloud database table on submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Convert comma separated input text string into a clean clean text string array
+            const choicesArray = document.getElementById('choices').value.split(',').map(item => item.trim());
 
             const payload = {
                 sector: document.getElementById('trade_type').value,
@@ -239,11 +254,11 @@
                 symptom: document.getElementById('symptom').value,
                 question: document.getElementById('question').value,
                 failure_mode: document.getElementById('failure_mode').value,
-                explanation: document.getElementById('explanation').value
+                explanation: document.getElementById('explanation').value,
+                choices: choicesArray
             };
 
             try {
-                // Point post submission directly to your Azure infrastructure layer
                 const response = await fetch(`${BACKEND_URL}/api/trades`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -252,7 +267,7 @@
 
                 if (response.ok) {
                     form.reset();
-                    refreshDatabaseView(); // Re-read database immediately to see your new live row
+                    refreshDatabaseView(); 
                 } else {
                     alert('Database insert operation rejected.');
                 }
@@ -262,7 +277,6 @@
             }
         });
 
-        // Initialize view on load
         refreshDatabaseView();
    </script>
 </body>
