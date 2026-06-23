@@ -1,11 +1,13 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const cors = require('cors'); // Essential for your GitHub Pages interface connection
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Middleware to parse incoming JSON payloads
+// Enable Cross-Origin Resource Sharing so your GitHub page can safely read/write data
+app.use(cors());
 app.use(express.json());
 
 // Initialize Database connection pool using Azure environment variable
@@ -16,19 +18,31 @@ const pool = new Pool({
     }
 });
 
-// Test database connectivity on startup
-pool.query('SELECT NOW()', (err, _res) => {
-    if (err) {
-        console.error('❌ Database connection error:', err.stack);
-    } else {
-        console.log('✅ Successfully connected to PostgreSQL Database cluster.');
+// Automatically create the correct table schema if it doesn't exist yet
+const initDb = async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS trade_sectors (
+                id SERIAL PRIMARY KEY,
+                sector TEXT NOT NULL,
+                component TEXT NOT NULL,
+                symptom TEXT NOT NULL,
+                question TEXT NOT NULL,
+                failure_mode TEXT NOT NULL,
+                explanation TEXT NOT NULL
+            );
+        `);
+        console.log('✅ PostgreSQL schema successfully validated/created.');
+    } catch (err) {
+        console.error('❌ Schema initialization error:', err.stack);
     }
-});
+};
+initDb();
 
-// API Route: Fetch all tracking records for your skilled trades
+// API Route: Fetch all master records
 app.get('/api/trades', async (_req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM trade_sectors ORDER BY id ASC;');
+        const result = await pool.query('SELECT * FROM trade_sectors ORDER BY id DESC;');
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -36,13 +50,14 @@ app.get('/api/trades', async (_req, res) => {
     }
 });
 
-// API Route: Add a new entry to the tracking system
+// API Route: Insert a comprehensive engineering console entry 
 app.post('/api/trades', async (req, res) => {
-    const { sector, allocation } = req.body;
+    const { sector, component, symptom, question, failure_mode, explanation } = req.body;
     try {
         const result = await pool.query(
-            'INSERT INTO trade_sectors (sector, allocation) VALUES ($1, $2) RETURNING *;',
-            [sector, allocation]
+            `INSERT INTO trade_sectors (sector, component, symptom, question, failure_mode, explanation) 
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
+            [sector, component, symptom, question, failure_mode, explanation]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -51,11 +66,11 @@ app.post('/api/trades', async (req, res) => {
     }
 });
 
-// Serve frontend layout (Assumes your HTML file is named index.html)
+// Serve static elements
 app.get('/', (_req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Node server cleanly booted and listening on port ${PORT}`);
+    console.log(`🚀 Node backend live and listening on port ${PORT}`);
 });
