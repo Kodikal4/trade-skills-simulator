@@ -132,6 +132,20 @@
         <header>
             <h1>Skilled-Trade Master Database Console</h1>
             <p>Live Connected Infrastructure Analytics Control Panel</p>
+            <div id="scoreboard" style="
+                position: sticky;
+                top: 10px;
+                z-index: 100;
+                background: var(--bg-surface);
+                border: 2px solid var(--accent-blue);
+                padding: 1rem;
+                border-radius: var(--radius);
+                margin-bottom: 1.5rem;
+                font-size: 1.1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            ">
+                🏆 Score: <strong>0</strong> / 0 (0%)
+            </div>
         </header>
 
         <form class="data-entry-form" id="record-form">
@@ -179,9 +193,9 @@
                         <th style="width: 5%">ID</th>
                         <th style="width: 10%">Sector</th>
                         <th style="width: 15%">Asset Component</th>
-                        <th style="width: 20%">Symptom Matrix</th>
-                        <th style="width: 20%">Verified Failure Mode</th>
-                        <th style="width: 30%">Multiple Choice Options</th>
+                        <th style="width: 25%">Symptom Matrix</th>
+                        <th style="width: 20%">Verified Failure Mode / Physics</th>
+                        <th style="width: 25%">Multiple Choice Options</th>
                     </tr>
                 </thead>
                 <tbody id="database-rows">
@@ -199,38 +213,116 @@
     
         const BACKEND_URL = 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
 
+        let totalCorrect = 0;
+        let totalAttempted = 0;
+
+        function updateScoreboard() {
+            const scoreboard = document.getElementById('scoreboard');
+            if (scoreboard) {
+                scoreboard.innerHTML = `🏆 Score: <strong>${totalCorrect}</strong> / ${totalAttempted} (${totalAttempted > 0 ? Math.round((totalCorrect/totalAttempted)*100) : 0}%)`;
+            }
+        }
+
+        // WRAPPED RETRIEVAL LOOP: Pulls directly from your Azure API endpoint safely
         async function refreshDatabaseView() {
             try {
-                const response = await fetch(`${BACKEND_URL}/api/trades`); 
-                if (!response.ok) throw new Error('API Sync Fault');
+                const response = await fetch(`${BACKEND_URL}/api/trades`);
+                if (!response.ok) throw new Error('API communication link dropped.');
                 
                 const data = await response.json();
-                tbody.innerHTML = ''; 
+                tbody.innerHTML = ''; // Clear processing loader indicator text
 
                 if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No records found. Add an entry above!</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">No records found in the database matrix.</td></tr>`;
                     return;
                 }
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
-                    
-                    // Create base columns
+            
+                    // Render base infrastructure logs
                     tr.innerHTML = `
                         <td><span class="badge">#${row.id || 'N/A'}</span></td>
-                        <td><strong>${row.trade_type || row.sector || 'N/A'}</strong></td>
-                        <td style="color: var(--accent-blue); font-weight:600;">${row.component}</td>
-                        <td>${row.symptom}</td>
-                        <td><em>${row.failure_mode || 'N/A'}</em></td>
+                        <td><strong>${row.sector || row.trade_type || 'N/A'}</strong></td>
+                        <td style="color: var(--accent-blue); font-weight:600;">${row.component || 'N/A'}</td>
+                        <td>
+                            <div style="font-weight:600; margin-bottom: 6px;">${row.symptom || 'N/A'}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; font-style: italic;">Q: ${row.question || 'No question assigned.'}</div>
+                        </td>
+                        <td>
+                            <div class="explanation-block" style="display:none; font-size: 0.85rem; background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--accent-blue);">
+                                <div style="font-weight:700; color:var(--accent-green); margin-bottom:4px;">✔ Root Cause:</div>
+                                <div style="margin-bottom:6px; font-weight:600;">${row.failure_mode}</div>
+                                <div style="color:var(--text-secondary); font-style:italic;">${row.explanation || 'No historical physics log available.'}</div>
+                            </div>
+                            <span class="lock-placeholder" style="color: var(--text-secondary); font-size:0.85rem;">🔒 Select an answer to evaluate...</span>
+                        </td>
                     `;
 
-                    // Create choice display element dynamically 
                     const choicesCell = document.createElement('td');
-                    if (row.choices && Array.isArray(row.choices)) {
-                        choicesCell.innerHTML = row.choices.map(opt => `<div style="margin-bottom:4px; font-size:0.85rem; color:var(--text-secondary);">• ${opt}</div>`).join('');
+                    
+                    if (row.choices && Array.isArray(row.choices) && row.choices.length > 0 && row.choices[0] !== 'B') {
+                        // Dynamically build individual selection action controllers
+                        row.choices.forEach(option => {
+                            const btn = document.createElement('button');
+                            btn.textContent = option;
+                            btn.style.cssText = `
+                                display: block;
+                                width: 100%;
+                                text-align: left;
+                                background: #334155;
+                                color: var(--text-primary);
+                                padding: 0.5rem;
+                                margin-bottom: 6px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 4px;
+                                font-size: 0.85rem;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                            `;
+
+                            btn.addEventListener('click', () => {
+                                const parent = btn.parentElement;
+                                if (parent.classList.contains('answered')) return; // Prevent double evaluation
+                                parent.classList.add('answered');
+
+                                totalAttempted++;
+                                
+                                // Direct character validation against database string record
+                                const isCorrect = (option.toLowerCase().trim() === row.failure_mode.toLowerCase().trim());
+                                
+                                if (isCorrect) {
+                                    btn.style.background = '#15803d'; // Emerald green
+                                    btn.style.borderColor = '#22c55e';
+                                    totalCorrect++;
+                                } else {
+                                    btn.style.background = '#b91c1c'; // Crimson red
+                                    btn.style.borderColor = '#ef4444';
+                                    
+                                    // Highlight correct target option line
+                                    Array.from(parent.children).forEach(sibling => {
+                                        if (sibling.textContent.toLowerCase().trim() === row.failure_mode.toLowerCase().trim()) {
+                                            sibling.style.background = '#15803d';
+                                            sibling.style.borderColor = '#22c55e';
+                                        }
+                                    });
+                                }
+
+                                // Open structural explanation drawer details inside column
+                                const expBlock = tr.querySelector('.explanation-block');
+                                const lockText = tr.querySelector('.lock-placeholder');
+                                if (expBlock) expBlock.style.display = 'block';
+                                if (lockText) lockText.style.display = 'none';
+
+                                updateScoreboard();
+                            });
+
+                            choicesCell.appendChild(btn);
+                        });
                     } else {
-                        choicesCell.textContent = 'N/A';
+                        choicesCell.textContent = 'Admin row (No test parameters mapped).';
                         choicesCell.style.color = 'var(--text-secondary)';
+                        choicesCell.style.fontSize = '0.85rem';
                     }
                     
                     tr.appendChild(choicesCell);
@@ -238,14 +330,14 @@
                 });
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to fetch data stream from cloud database layer.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to sync with central database network.</td></tr>`;
             }
         }
 
+        // Submit form entry payload handler
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Convert comma separated input text string into a clean clean text string array
             const choicesArray = document.getElementById('choices').value.split(',').map(item => item.trim());
 
             const payload = {
@@ -277,6 +369,7 @@
             }
         });
 
+        // Initialize table dataset on browser boot
         refreshDatabaseView();
    </script>
 </body>
