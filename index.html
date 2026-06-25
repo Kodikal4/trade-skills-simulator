@@ -228,6 +228,8 @@
                 <div>🏁 End Time: <span id="dash-end" style="color: var(--text-primary); font-weight: 600;">-</span></div>
             </div>
 
+            <div id="quiz-review-breakdown" style="margin-top: 2rem; margin-bottom: 2rem; display: flex; flex-direction: column; gap: 1.5rem;"></div>
+
             <button onclick="returnToMenu()" style="width: 100%; background: var(--bg-main); color: var(--accent-blue); border: 1px solid var(--accent-blue); padding: 1rem; font-size: 1.05rem; font-weight: 700; border-radius: var(--radius); cursor: pointer; transition: all 0.2s;">🔄 Return to Main Track Select Deck</button>
         </div>
 
@@ -401,7 +403,7 @@
             quizState.totalCorrect = 0;
 
             const reviewContainer = document.getElementById('quiz-review-breakdown');
-            reviewContainer.innerHTML = '### 📋 Answer Key\n---\n';
+            reviewContainer.innerHTML = '<h2 style="color: var(--accent-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; text-align: left;">📋 Detailed Performance Review</h2>';
 
             quizState.filteredQuestions.forEach((question, index) => {
                 const correctMode = (question.failure_mode || '').trim();
@@ -481,7 +483,7 @@
 
             // Ship metrics payload to Azure PostgreSQL instance database via secure tunnel
             try {
-            await fetch(`${BACKEND_URL}/api/quiz-history`, {
+             await fetch(`${BACKEND_URL}/api/quiz-history`, {
                     method: 'POST',
                     headers: { 
                                 'Content-Type': 'application/json',
