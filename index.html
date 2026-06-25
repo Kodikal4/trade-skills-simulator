@@ -242,18 +242,18 @@
             currentQuestionIndex: 0,
             totalCorrect: 0,
             totalAttempted: 0,
-            isAnswered: false,
             activeSector: '',
             timeStarted: null,
             timeFinished: null,
-            userToken: null // Holds the Google JWT for backend API validation passing
+            userToken: null,
+            // 🚀 NEW: Array to track user responses silently without showing instant feedback
+            userSelections: [] 
         };
 
         // 🛡️ GOOGLE CREDENTIAL CALLBACK HANDSHAKE INTERCEPTOR
         function handleCredentialResponse(response) {
             quizState.userToken = response.credential;
             
-            // Extract profile metadata context safely for UI presentation
             const base64Url = quizState.userToken.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
             const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
@@ -262,18 +262,16 @@
             
             const userProfile = JSON.parse(jsonPayload);
             
-            // Update Header verified component indicator
             const statusBox = document.getElementById('profile-status-box');
             statusBox.style.borderColor = 'var(--accent-green)';
             statusBox.style.background = 'rgba(34, 197, 94, 0.1)';
             statusBox.innerHTML = `🛡️ Verified: <strong>${userProfile.name}</strong>`;
             
-            // Drop Security Veil Blocker Cover
             document.getElementById('auth-wall').style.display = 'none';
-            console.log("🔒 Identity validated securely for client instance profile: " + userProfile.email);
+            console.log("🔒 Identity validated securely for: " + userProfile.email);
         }
 
-        // Track Trigger Router: Fetches full array via API and filters matching specific sectors
+        // Track Trigger Router
         async function startQuizTrack(sectorId) {
             try {
                 const response = await fetch(`${BACKEND_URL}/api/trades`);
@@ -291,19 +289,21 @@
                     return;
                 }
 
+                // Initialize state variables
                 quizState.activeSector = sectorId;
                 quizState.currentQuestionIndex = 0;
                 quizState.totalCorrect = 0;
                 quizState.totalAttempted = 0;
-                quizState.isAnswered = false;
+                quizState.userSelections = []; // Clear previous run selections
                 quizState.timeStarted = new Date();
 
                 document.getElementById('sector-selection-view').style.display = 'none';
                 document.getElementById('dashboard-view').style.display = 'none';
                 document.getElementById('quiz-view').style.display = 'block';
-                document.getElementById('scoreboard').style.display = 'block';
                 
-                updateScoreboardDisplay();
+                // HIDE live scoreboard from top deck during active exam run
+                document.getElementById('scoreboard').style.display = 'none';
+                
                 renderActiveStep();
 
             } catch (err) {
@@ -314,18 +314,19 @@
 
         // Single Step Step Engine Renderer
         function renderActiveStep() {
-            quizState.isAnswered = false;
             const currentItem = quizState.filteredQuestions[quizState.currentQuestionIndex];
             
-            document.getElementById('question-progress').textContent = `Metric Challenge ${quizState.currentQuestionIndex + 1} of ${quizState.filteredQuestions.length}`;
+            document.getElementById('question-progress').textContent = `Challenge ${quizState.currentQuestionIndex + 1} of ${quizState.filteredQuestions.length}`;
             document.getElementById('quiz-sector-badge').textContent = currentItem.sector || currentItem.trade_type;
             document.getElementById('quiz-asset').textContent = currentItem.component || 'System Asset Context';
             document.getElementById('quiz-symptom').textContent = currentItem.symptom || 'No logged symptoms.';
             document.getElementById('quiz-question').textContent = currentItem.question ? `Diagnostic Query: ${currentItem.question}` : 'Analyze metrics and isolate the root failure mode:';
             
+            // Explicitly keep explanation drawer hidden during active selection tracks
             document.getElementById('quiz-explanation-drawer').style.display = 'none';
+            
             const nextBtn = document.getElementById('next-question-btn');
-            nextBtn.style.display = 'none';
+            nextBtn.style.display = 'none'; // Only shows up once a selection choice maps
 
             const container = document.getElementById('quiz-choices-container');
             container.innerHTML = '';
@@ -336,7 +337,12 @@
                     const btn = document.createElement('button');
                     btn.className = 'choice-btn';
                     btn.textContent = option;
-                    btn.addEventListener('click', () => evaluateChoiceNode(btn, option, currentItem));
+                    
+                    // Reapply baseline highlight if user backs up or views it, else neutral styling
+                    btn.style.background = 'var(--bg-main)';
+                    btn.style.borderColor = 'var(--border-color)';
+                    
+                    btn.addEventListener('click', () => saveSelectionLocally(btn, option));
                     container.appendChild(btn);
                 });
             } else {
@@ -346,38 +352,22 @@
             }
         }
 
-        // Selection Resolution Handler Node
-        function evaluateChoiceNode(clickedButton, userSelectionString, targetRecord) {
-            if (quizState.isAnswered) return;
-            quizState.isAnswered = true;
-
-            quizState.totalAttempted++;
-            const correctModeText = (targetRecord.failure_mode || '').trim().toLowerCase();
-            const chosenModeText = userSelectionString.trim().toLowerCase();
-
-            const isCorrect = (chosenModeText === correctModeText);
+        // Save User Selection Silently (No Colors, No Drawers)
+        function saveSelectionLocally(clickedButton, selectedValue) {
             const container = document.getElementById('quiz-choices-container');
-
-            Array.from(container.children).forEach(button => {
-                button.disabled = true;
-                if (button.textContent.trim().toLowerCase() === correctModeText) {
-                    button.style.background = '#15803d';
-                    button.style.borderColor = '#22c55e';
-                }
+            
+            // Visually toggle active selection states without green/red confirmation tints
+            Array.from(container.children).forEach(btn => {
+                btn.style.background = 'var(--bg-main)';
+                btn.style.borderColor = 'var(--border-color)';
             });
+            
+            // Subtle accent border change just to confirm what button they currently have toggled active
+            clickedButton.style.borderColor = 'var(--accent-blue)';
+            clickedButton.style.background = 'rgba(56, 189, 248, 0.05)';
 
-            if (isCorrect) {
-                quizState.totalCorrect++;
-            } else {
-                clickedButton.style.background = '#b91c1c';
-                clickedButton.style.borderColor = '#ef4444';
-            }
-
-            document.getElementById('drawer-failure-mode').textContent = targetRecord.failure_mode;
-            document.getElementById('drawer-explanation').textContent = targetRecord.explanation || 'No deep structural explanation variables logged.';
-            document.getElementById('quiz-explanation-drawer').style.display = 'block';
-
-            updateScoreboardDisplay();
+            // Save or update selection at current array index point
+            quizState.userSelections[quizState.currentQuestionIndex] = selectedValue;
 
             const nextBtn = document.getElementById('next-question-btn');
             if (quizState.currentQuestionIndex === quizState.filteredQuestions.length - 1) {
@@ -389,17 +379,34 @@
         }
 
         function goToNextQuestion() {
+            // If user skipped or didn't select something explicitly, register as blank
+            if (!quizState.userSelections[quizState.currentQuestionIndex]) {
+                quizState.userSelections[quizState.currentQuestionIndex] = "";
+            }
+
             if (quizState.currentQuestionIndex < quizState.filteredQuestions.length - 1) {
                 quizState.currentQuestionIndex++;
                 renderActiveStep();
             } else {
-                compileFinalMetricsDashboard();
+                processAndCompileFinalMetrics();
             }
         }
 
-        // Post-Quiz Processing Terminal Builder
-        async function compileFinalMetricsDashboard() {
+        // Post-Quiz Processing Terminal Builder (Calculates scores at the very end)
+        async function processAndCompileFinalMetrics() {
             quizState.timeFinished = new Date();
+            
+            // Evaluate scores out of sight
+            quizState.totalAttempted = quizState.filteredQuestions.length;
+            quizState.totalCorrect = 0;
+
+            quizState.filteredQuestions.forEach((question, index) => {
+                const correctMode = (question.failure_mode || '').trim().toLowerCase();
+                const userSelection = (quizState.userSelections[index] || '').trim().toLowerCase();
+                if (userSelection === correctMode) {
+                    quizState.totalCorrect++;
+                }
+            });
             
             const totalDurationMs = quizState.timeFinished - quizState.timeStarted;
             const totalSeconds = Math.floor(totalDurationMs / 1000);
@@ -412,6 +419,7 @@
             const startTimeStr = quizState.timeStarted.toLocaleTimeString([], formatConfig);
             const endTimeStr = quizState.timeFinished.toLocaleTimeString([], formatConfig);
             
+            // Inject metrics straight into View 3 Dashboard Panels
             document.getElementById('dash-sector').textContent = quizState.activeSector;
             document.getElementById('dash-score').textContent = scoreString;
             document.getElementById('dash-accuracy').textContent = `${accuracyPercent}%`;
@@ -419,17 +427,17 @@
             document.getElementById('dash-end').textContent = endTimeStr;
             document.getElementById('dash-duration').textContent = `${displayMinutes}m ${displaySeconds}s`;
 
+            // Swap visible interface layers
             document.getElementById('quiz-view').style.display = 'none';
-            document.getElementById('scoreboard').style.display = 'none';
             document.getElementById('dashboard-view').style.display = 'block';
 
-            // 🚀 SHIP ENCRYPTED AUTHENTICATION HEADER PAYLOAD TO SECURED API CHANNELS
+            // Ship metrics payload to Azure PostgreSQL instance database via secure tunnel
             try {
                 await fetch(`${BACKEND_URL}/api/quiz-history`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${quizState.userToken}` // Verifies request is from a authenticated user
+                        'Authorization': `Bearer ${quizState.userToken}`
                     },
                     body: JSON.stringify({
                         sector_taken: quizState.activeSector,
@@ -450,13 +458,6 @@
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('sector-selection-view').style.display = 'block';
         }
-
-        function updateScoreboardDisplay() {
-            document.getElementById('score-correct').textContent = quizState.totalCorrect;
-            document.getElementById('score-attempted').textContent = quizState.totalAttempted;
-            const percent = quizState.totalAttempted > 0 ? Math.round((quizState.totalCorrect / quizState.totalAttempted) * 100) : 0;
-            document.getElementById('score-percent').textContent = percent;
-        }
-    </script>
+  </script>
 </body>
 </html>
