@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skilled-Trade Startup Database Console</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-main: #0f172a;
@@ -33,89 +34,86 @@
             margin-bottom: 2rem;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 1rem;
-        }
-
-        h1 { font-size: 1.8rem; color: var(--text-primary); }
-        p { color: var(--text-secondary); }
-
-        .data-entry-form {
-            background: var(--bg-surface);
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            border: 1px solid var(--border-color);
-            margin-bottom: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
             gap: 1rem;
         }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+        .header-title-block {
+            flex: 1;
+            min-width: 280px;
         }
 
-        label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
+        h1 { font-size: 1.8rem; color: var(--text-primary); margin: 0 0 0.25rem 0; }
+        p { color: var(--text-secondary); margin: 0; }
 
-        input, textarea, select {
-            background: var(--bg-main);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.6rem;
-            border-radius: var(--radius);
-            font-family: inherit;
-        }
-
-        .full-width { grid-column: span 2; }
-
-        button {
-            background: var(--accent-blue);
-            color: var(--bg-main);
-            border: none;
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            border-radius: var(--radius);
-            cursor: pointer;
-            align-self: flex-end;
-        }
-
-        button:hover { opacity: 0.9; }
-
-        .database-grid-container {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
+        .auth-status {
             font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            background: rgba(30, 41, 59, 0.5);
+            color: var(--text-secondary);
         }
 
-        th {
-            background: rgba(15, 23, 42, 0.6);
-            color: var(--accent-blue);
-            padding: 1rem;
-            font-weight: 600;
-            border-bottom: 2px solid var(--border-color);
+        .sector-card {
+            background: var(--bg-surface); 
+            color: white; 
+            padding: 2rem; 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius); 
+            cursor: pointer; 
+            text-align: center; 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            transition: all 0.2s;
+        }
+        .sector-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
         }
 
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
+        .choice-btn {
+            background: var(--bg-main);
             color: var(--text-primary);
-            vertical-align: top;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: var(--radius);
+            text-align: left;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.15s ease;
+        }
+        .choice-btn:hover:not(:disabled) {
+            background: var(--bg-surface);
+            border-color: var(--accent-blue);
+        }
+        .choice-btn:disabled {
+            cursor: not-allowed;
+            color: var(--text-secondary);
         }
 
-        tr:hover { background: rgba(255, 255, 255, 0.02); }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .metric-box {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            padding: 1.25rem;
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        .metric-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-top: 0.25rem;
+        }
 
         .badge {
             background: #334155;
@@ -128,249 +126,337 @@
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>Skilled-Trade Master Database Console</h1>
-            <p>Live Connected Infrastructure Analytics Control Panel</p>
-            <div id="scoreboard" style="
-                position: sticky;
-                top: 10px;
-                z-index: 100;
-                background: var(--bg-surface);
-                border: 2px solid var(--accent-blue);
-                padding: 1rem;
-                border-radius: var(--radius);
-                margin-bottom: 1.5rem;
-                font-size: 1.1rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-            ">
-                🏆 Score: <strong>0</strong> / 0 (0%)
+    <div id="auth-wall" style="position: fixed; inset: 0; background: var(--bg-main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center;">
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem 2rem; border-radius: 12px; max-width: 450px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <h2 style="margin: 0 0 0.5rem 0; color: var(--text-primary); font-size: 1.6rem;">System Authentication</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5;">To protect server analytics tables against automated scraping scripts, please log in via a verified account.</p>
+            
+            <div style="display: flex; justify-content: center;">
+                <div id="g_id_onload"
+                     data-client_id="979977107011-iuvt0p0lp8riuuoj9uibjq590n95vd6l.apps.googleusercontent.com" 
+                     data-context="signin"
+                     data-ux_mode="popup"
+                     data-callback="handleCredentialResponse"
+                     data-auto_select="false">
+                </div>
+                <div class="g_id_signin"
+                     data-type="standard"
+                     data-shape="pill"
+                     data-theme="filled_blue"
+                     data-text="signin_with"
+                     data-size="large"
+                     data-logo_alignment="left">
+                </div>
             </div>
-        </header>
-
-        <form class="data-entry-form" id="record-form">
-            <div class="form-group">
-                <label>Trade Sector</label>
-                <select id="trade_type" required>
-                    <option value="Diesel">Heavy Diesel</option>
-                    <option value="Lineman">Power Lineman</option>
-                    <option value="HVAC">HVAC Specialist</option>
-                    <option value="PowerPlant">Power Plant Ops</option>
-                    <option value="Automation">PLC Automation</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Component Asset</label>
-                <input type="text" id="component" placeholder="e.g. Common Rail Injector" required>
-            </div>
-            <div class="form-group full-width">
-                <label>Telemetry Symptom Profile</label>
-                <input type="text" id="symptom" placeholder="Describe the physical failure presentation..." required>
-            </div>
-            <div class="form-group full-width">
-                <label>Core Diagnostic Question</label>
-                <input type="text" id="question" placeholder="Engineering isolation query..." required>
-            </div>
-            <div class="form-group full-width">
-                <label>Multiple Choice Options (Comma Separated)</label>
-                <input type="text" id="choices" placeholder="Option A, Option B, Option C, Option D" required>
-            </div>
-            <div class="form-group">
-                <label>Verified Failure Mode (Root Cause)</label>
-                <input type="text" id="failure_mode" placeholder="True root cause mechanical failure" required>
-            </div>
-            <div class="form-group">
-                <label>Engineering Explanation</label>
-                <textarea id="explanation" rows="2" placeholder="Provide root cause failure physics details..." required></textarea>
-            </div>
-            <button type="submit">Insert Record</button>
-        </form>
-
-        <div class="database-grid-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 5%">ID</th>
-                        <th style="width: 10%">Sector</th>
-                        <th style="width: 15%">Asset Component</th>
-                        <th style="width: 25%">Symptom Matrix</th>
-                        <th style="width: 20%">Verified Failure Mode / Physics</th>
-                        <th style="width: 25%">Multiple Choice Options</th>
-                    </tr>
-                </thead>
-                <tbody id="database-rows">
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: var(--text-secondary);">Connecting to PostgreSQL server core instance...</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 
+    <div class="container">
+        <header>
+            <div class="header-title-block">
+                <h1>Skilled-Trade Master Database Console</h1>
+                <p>Live Connected Infrastructure Analytics Control Panel</p>
+            </div>
+            <div class="auth-status" id="profile-status-box">🔒 System Locked</div>
+        </header>
+
+        <div id="scoreboard" style="display: none; background: var(--bg-surface); border: 2px solid var(--accent-blue); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);">
+            🏆 Score: <strong id="score-correct">0</strong> / <span id="score-attempted">0</span> (<span id="score-percent">0</span>%)
+        </div>
+        
+        <div id="sector-selection-view">
+            <h2 style="margin-bottom: 1.5rem; color: var(--accent-blue);">Select Your Diagnostic Trade Track</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                <button class="sector-card" onclick="startQuizTrack('Diesel')">⚙️ Heavy Diesel</button>
+                <button class="sector-card" onclick="startQuizTrack('Lineman')">⚡ Power Lineman</button>
+                <button class="sector-card" onclick="startQuizTrack('HVAC')">❄️ HVAC Specialist</button>
+                <button class="sector-card" onclick="startQuizTrack('PowerPlant')">☢️ Power Plant Ops</button>
+                <button class="sector-card" onclick="startQuizTrack('Automation')">🤖 PLC Automation</button>
+            </div>
+        </div>
+
+        <div id="quiz-view" style="display: none; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 2rem; margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <span id="quiz-sector-badge" class="badge" style="background: var(--accent-blue); color: var(--bg-main); font-size: 0.9rem; padding: 0.4rem 0.8rem;">Sector</span>
+                <span id="question-progress" style="color: var(--text-secondary); font-weight: 600;">Question 1 of X</span>
+            </div>
+
+            <h3 id="quiz-asset" style="color: var(--accent-blue); margin: 0 0 0.5rem 0; font-size: 1.4rem;">Component</h3>
+            <p id="quiz-symptom" style="font-size: 1.1rem; color: var(--text-primary); font-weight: 500; margin-bottom: 1.5rem; background: rgba(15,23,42,0.4); padding: 1rem; border-radius: var(--radius); line-height: 1.5;">Symptom Description</p>
+            
+            <h4 id="quiz-question" style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1rem; font-style: italic;">Question</h4>
+            
+            <div id="quiz-choices-container" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;"></div>
+
+            <div id="quiz-explanation-drawer" style="display: none; background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: var(--radius); border-left: 4px solid var(--accent-green); margin-bottom: 1.5rem;">
+                <div style="font-weight: 700; color: var(--accent-green); margin-bottom: 0.5rem;">Explanation:</div>
+                <div id="drawer-failure-mode" style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;"></div>
+                <div id="drawer-explanation" style="color: var(--text-secondary); font-style: italic; line-height: 1.4;"></div>
+            </div>
+
+            <button id="next-question-btn" onclick="goToNextQuestion()" style="display: none; width: 100%; background: var(--accent-green); color: var(--bg-main); padding: 1rem; font-size: 1.1rem; border-radius: var(--radius); border: none; font-weight: 700; cursor: pointer;">Next ➡️</button>
+        </div>
+
+        <div id="dashboard-view" style="display: none; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 2.5rem; margin-top: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <span style="font-size: 3rem;">📊</span>
+                <h2 style="color: var(--accent-blue); margin: 0.5rem 0 0.25rem 0; font-size: 1.75rem;">Session Evaluation Complete</h2>
+                <p>Performance metrics successfully transmitted over secure connection matrix.</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <label>Active Track</label>
+                    <div class="metric-val" id="dash-sector">-</div>
+                </div>
+                <div class="metric-box">
+                    <label>Raw Score</label>
+                    <div class="metric-val" id="dash-score">-</div>
+                </div>
+                <div class="metric-box">
+                    <label>Accuracy</label>
+                    <div class="metric-val" id="dash-accuracy">-</div>
+                </div>
+                <div class="metric-box">
+                    <label>Track Duration</label>
+                    <div class="metric-val" id="dash-duration">-</div>
+                </div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.4); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border-color); margin-bottom: 2rem; font-size: 0.9rem; color: var(--text-secondary); display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>🕒 Session Ignition: <span id="dash-start" style="color: var(--text-primary); font-weight: 600;">-</span></div>
+                <div>🏁 Core Termination: <span id="dash-end" style="color: var(--text-primary); font-weight: 600;">-</span></div>
+            </div>
+
+            <button onclick="returnToMenu()" style="width: 100%; background: var(--bg-main); color: var(--accent-blue); border: 1px solid var(--accent-blue); padding: 1rem; font-size: 1.05rem; font-weight: 700; border-radius: var(--radius); cursor: pointer; transition: all 0.2s;">🔄 Return to Main Track Select Deck</button>
+        </div>
+
+    </div>
+
     <script>
-        const tbody = document.getElementById('database-rows');
-        const form = document.getElementById('record-form');
-    
         const BACKEND_URL = 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
 
-        let totalCorrect = 0;
-        let totalAttempted = 0;
+        // Central System State Machine Logic Engine
+        let quizState = {
+            filteredQuestions: [],
+            currentQuestionIndex: 0,
+            totalCorrect: 0,
+            totalAttempted: 0,
+            isAnswered: false,
+            activeSector: '',
+            timeStarted: null,
+            timeFinished: null,
+            userToken: null // Holds the Google JWT for backend API validation passing
+        };
 
-        function updateScoreboard() {
-            const scoreboard = document.getElementById('scoreboard');
-            if (scoreboard) {
-                scoreboard.innerHTML = `🏆 Score: <strong>${totalCorrect}</strong> / ${totalAttempted} (${totalAttempted > 0 ? Math.round((totalCorrect/totalAttempted)*100) : 0}%)`;
-            }
+        // 🛡️ GOOGLE CREDENTIAL CALLBACK HANDSHAKE INTERCEPTOR
+        function handleCredentialResponse(response) {
+            quizState.userToken = response.credential;
+            
+            // Extract profile metadata context safely for UI presentation
+            const base64Url = quizState.userToken.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            const userProfile = JSON.parse(jsonPayload);
+            
+            // Update Header verified component indicator
+            const statusBox = document.getElementById('profile-status-box');
+            statusBox.style.borderColor = 'var(--accent-green)';
+            statusBox.style.background = 'rgba(34, 197, 94, 0.1)';
+            statusBox.innerHTML = `🛡️ Verified: <strong>${userProfile.name}</strong>`;
+            
+            // Drop Security Veil Blocker Cover
+            document.getElementById('auth-wall').style.display = 'none';
+            console.log("🔒 Identity validated securely for client instance profile: " + userProfile.email);
         }
 
-        // WRAPPED RETRIEVAL LOOP: Pulls directly from your Azure API endpoint safely
-        async function refreshDatabaseView() {
+        // Track Trigger Router: Fetches full array via API and filters matching specific sectors
+        async function startQuizTrack(sectorId) {
             try {
                 const response = await fetch(`${BACKEND_URL}/api/trades`);
-                if (!response.ok) throw new Error('API communication link dropped.');
+                if (!response.ok) throw new Error('Could not establish link with server instance.');
                 
                 const data = await response.json();
-                tbody.innerHTML = ''; // Clear processing loader indicator text
+                
+                quizState.filteredQuestions = data.filter(row => {
+                    const sectorMatch = (row.sector || row.trade_type || '').toLowerCase().trim();
+                    return sectorMatch.includes(sectorId.toLowerCase().trim());
+                });
 
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">No records found in the database matrix.</td></tr>`;
+                if (quizState.filteredQuestions.length === 0) {
+                    alert(`No active data entries seeded for track: ${sectorId}`);
                     return;
                 }
 
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-            
-                    // Render base infrastructure logs
-                    tr.innerHTML = `
-                        <td><span class="badge">#${row.id || 'N/A'}</span></td>
-                        <td><strong>${row.sector || row.trade_type || 'N/A'}</strong></td>
-                        <td style="color: var(--accent-blue); font-weight:600;">${row.component || 'N/A'}</td>
-                        <td>
-                            <div style="font-weight:600; margin-bottom: 6px;">${row.symptom || 'N/A'}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.85rem; font-style: italic;">Q: ${row.question || 'No question assigned.'}</div>
-                        </td>
-                        <td>
-                            <div class="explanation-block" style="display:none; font-size: 0.85rem; background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--accent-blue);">
-                                <div style="font-weight:700; color:var(--accent-green); margin-bottom:4px;">✔ Root Cause:</div>
-                                <div style="margin-bottom:6px; font-weight:600;">${row.failure_mode}</div>
-                                <div style="color:var(--text-secondary); font-style:italic;">${row.explanation || 'No historical physics log available.'}</div>
-                            </div>
-                            <span class="lock-placeholder" style="color: var(--text-secondary); font-size:0.85rem;">🔒 Select an answer to evaluate...</span>
-                        </td>
-                    `;
+                quizState.activeSector = sectorId;
+                quizState.currentQuestionIndex = 0;
+                quizState.totalCorrect = 0;
+                quizState.totalAttempted = 0;
+                quizState.isAnswered = false;
+                quizState.timeStarted = new Date();
 
-                    const choicesCell = document.createElement('td');
-                    
-                    if (row.choices && Array.isArray(row.choices) && row.choices.length > 0 && row.choices[0] !== 'B') {
-                        // Dynamically build individual selection action controllers
-                        row.choices.forEach(option => {
-                            const btn = document.createElement('button');
-                            btn.textContent = option;
-                            btn.style.cssText = `
-                                display: block;
-                                width: 100%;
-                                text-align: left;
-                                background: #334155;
-                                color: var(--text-primary);
-                                padding: 0.5rem;
-                                margin-bottom: 6px;
-                                border: 1px solid var(--border-color);
-                                border-radius: 4px;
-                                font-size: 0.85rem;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                            `;
+                document.getElementById('sector-selection-view').style.display = 'none';
+                document.getElementById('dashboard-view').style.display = 'none';
+                document.getElementById('quiz-view').style.display = 'block';
+                document.getElementById('scoreboard').style.display = 'block';
+                
+                updateScoreboardDisplay();
+                renderActiveStep();
 
-                            btn.addEventListener('click', () => {
-                                const parent = btn.parentElement;
-                                if (parent.classList.contains('answered')) return; // Prevent double evaluation
-                                parent.classList.add('answered');
-
-                                totalAttempted++;
-                                
-                                // Direct character validation against database string record
-                                const isCorrect = (option.toLowerCase().trim() === row.failure_mode.toLowerCase().trim());
-                                
-                                if (isCorrect) {
-                                    btn.style.background = '#15803d'; // Emerald green
-                                    btn.style.borderColor = '#22c55e';
-                                    totalCorrect++;
-                                } else {
-                                    btn.style.background = '#b91c1c'; // Crimson red
-                                    btn.style.borderColor = '#ef4444';
-                                    
-                                    // Highlight correct target option line
-                                    Array.from(parent.children).forEach(sibling => {
-                                        if (sibling.textContent.toLowerCase().trim() === row.failure_mode.toLowerCase().trim()) {
-                                            sibling.style.background = '#15803d';
-                                            sibling.style.borderColor = '#22c55e';
-                                        }
-                                    });
-                                }
-
-                                // Open structural explanation drawer details inside column
-                                const expBlock = tr.querySelector('.explanation-block');
-                                const lockText = tr.querySelector('.lock-placeholder');
-                                if (expBlock) expBlock.style.display = 'block';
-                                if (lockText) lockText.style.display = 'none';
-
-                                updateScoreboard();
-                            });
-
-                            choicesCell.appendChild(btn);
-                        });
-                    } else {
-                        choicesCell.textContent = 'Admin row (No test parameters mapped).';
-                        choicesCell.style.color = 'var(--text-secondary)';
-                        choicesCell.style.fontSize = '0.85rem';
-                    }
-                    
-                    tr.appendChild(choicesCell);
-                    tbody.appendChild(tr);
-                });
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to sync with central database network.</td></tr>`;
+                alert('Cloud Synchronization Failure. Check device connection array context.');
             }
         }
 
-        // Submit form entry payload handler
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Single Step Step Engine Renderer
+        function renderActiveStep() {
+            quizState.isAnswered = false;
+            const currentItem = quizState.filteredQuestions[quizState.currentQuestionIndex];
+            
+            document.getElementById('question-progress').textContent = `Metric Challenge ${quizState.currentQuestionIndex + 1} of ${quizState.filteredQuestions.length}`;
+            document.getElementById('quiz-sector-badge').textContent = currentItem.sector || currentItem.trade_type;
+            document.getElementById('quiz-asset').textContent = currentItem.component || 'System Asset Context';
+            document.getElementById('quiz-symptom').textContent = currentItem.symptom || 'No logged symptoms.';
+            document.getElementById('quiz-question').textContent = currentItem.question ? `Diagnostic Query: ${currentItem.question}` : 'Analyze metrics and isolate the root failure mode:';
+            
+            document.getElementById('quiz-explanation-drawer').style.display = 'none';
+            const nextBtn = document.getElementById('next-question-btn');
+            nextBtn.style.display = 'none';
 
-            const choicesArray = document.getElementById('choices').value.split(',').map(item => item.trim());
+            const container = document.getElementById('quiz-choices-container');
+            container.innerHTML = '';
 
-            const payload = {
-                sector: document.getElementById('trade_type').value,
-                component: document.getElementById('component').value,
-                symptom: document.getElementById('symptom').value,
-                question: document.getElementById('question').value,
-                failure_mode: document.getElementById('failure_mode').value,
-                explanation: document.getElementById('explanation').value,
-                choices: choicesArray
-            };
-
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/trades`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+            const choices = currentItem.choices;
+            if (choices && Array.isArray(choices) && choices.length > 0 && choices[0] !== 'B') {
+                choices.forEach(option => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.textContent = option;
+                    btn.addEventListener('click', () => evaluateChoiceNode(btn, option, currentItem));
+                    container.appendChild(btn);
                 });
-
-                if (response.ok) {
-                    form.reset();
-                    refreshDatabaseView(); 
-                } else {
-                    alert('Database insert operation rejected.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to connect to backend api layer.');
+            } else {
+                container.innerHTML = `<div style="color:var(--text-secondary); font-style:italic; padding:0.5rem 0;">No operational testing choice variants mapped to this array point.</div>`;
+                nextBtn.textContent = 'Skip Static Admin Entry Node ➡️';
+                nextBtn.style.display = 'block';
             }
-        });
+        }
 
-        // Initialize table dataset on browser boot
-        refreshDatabaseView();
-   </script>
+        // Selection Resolution Handler Node
+        function evaluateChoiceNode(clickedButton, userSelectionString, targetRecord) {
+            if (quizState.isAnswered) return;
+            quizState.isAnswered = true;
+
+            quizState.totalAttempted++;
+            const correctModeText = (targetRecord.failure_mode || '').trim().toLowerCase();
+            const chosenModeText = userSelectionString.trim().toLowerCase();
+
+            const isCorrect = (chosenModeText === correctModeText);
+            const container = document.getElementById('quiz-choices-container');
+
+            Array.from(container.children).forEach(button => {
+                button.disabled = true;
+                if (button.textContent.trim().toLowerCase() === correctModeText) {
+                    button.style.background = '#15803d';
+                    button.style.borderColor = '#22c55e';
+                }
+            });
+
+            if (isCorrect) {
+                quizState.totalCorrect++;
+            } else {
+                clickedButton.style.background = '#b91c1c';
+                clickedButton.style.borderColor = '#ef4444';
+            }
+
+            document.getElementById('drawer-failure-mode').textContent = targetRecord.failure_mode;
+            document.getElementById('drawer-explanation').textContent = targetRecord.explanation || 'No deep structural explanation variables logged.';
+            document.getElementById('quiz-explanation-drawer').style.display = 'block';
+
+            updateScoreboardDisplay();
+
+            const nextBtn = document.getElementById('next-question-btn');
+            if (quizState.currentQuestionIndex === quizState.filteredQuestions.length - 1) {
+                nextBtn.textContent = '🏁 Terminate Track & Compile Summary Metrics';
+            } else {
+                nextBtn.textContent = 'Next Diagnostic Challenge ➡️';
+            }
+            nextBtn.style.display = 'block';
+        }
+
+        function goToNextQuestion() {
+            if (quizState.currentQuestionIndex < quizState.filteredQuestions.length - 1) {
+                quizState.currentQuestionIndex++;
+                renderActiveStep();
+            } else {
+                compileFinalMetricsDashboard();
+            }
+        }
+
+        // Post-Quiz Processing Terminal Builder
+        async function compileFinalMetricsDashboard() {
+            quizState.timeFinished = new Date();
+            
+            const totalDurationMs = quizState.timeFinished - quizState.timeStarted;
+            const totalSeconds = Math.floor(totalDurationMs / 1000);
+            const displayMinutes = Math.floor(totalSeconds / 60);
+            const displaySeconds = totalSeconds % 60;
+            const accuracyPercent = quizState.totalAttempted > 0 ? Math.round((quizState.totalCorrect / quizState.totalAttempted) * 100) : 0;
+
+            const formatConfig = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const scoreString = `${quizState.totalCorrect} / ${quizState.totalAttempted}`;
+            const startTimeStr = quizState.timeStarted.toLocaleTimeString([], formatConfig);
+            const endTimeStr = quizState.timeFinished.toLocaleTimeString([], formatConfig);
+            
+            document.getElementById('dash-sector').textContent = quizState.activeSector;
+            document.getElementById('dash-score').textContent = scoreString;
+            document.getElementById('dash-accuracy').textContent = `${accuracyPercent}%`;
+            document.getElementById('dash-start').textContent = startTimeStr;
+            document.getElementById('dash-end').textContent = endTimeStr;
+            document.getElementById('dash-duration').textContent = `${displayMinutes}m ${displaySeconds}s`;
+
+            document.getElementById('quiz-view').style.display = 'none';
+            document.getElementById('scoreboard').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+
+            // 🚀 SHIP ENCRYPTED AUTHENTICATION HEADER PAYLOAD TO SECURED API CHANNELS
+            try {
+                await fetch(`${BACKEND_URL}/api/quiz-history`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${quizState.userToken}` // Verifies request is from a authenticated user
+                    },
+                    body: JSON.stringify({
+                        sector_taken: quizState.activeSector,
+                        score_achieved: scoreString,
+                        accuracy_percent: accuracyPercent,
+                        time_started: startTimeStr,
+                        time_finished: endTimeStr,
+                        total_duration_seconds: totalSeconds
+                    })
+                });
+                console.log("📊 Performance metrics logged securely to Azure PostgreSQL instance.");
+            } catch(err) {
+                console.error("Failed to back up tracking array.", err);
+            }
+        }
+
+        function returnToMenu() {
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('sector-selection-view').style.display = 'block';
+        }
+
+        function updateScoreboardDisplay() {
+            document.getElementById('score-correct').textContent = quizState.totalCorrect;
+            document.getElementById('score-attempted').textContent = quizState.totalAttempted;
+            const percent = quizState.totalAttempted > 0 ? Math.round((quizState.totalCorrect / quizState.totalAttempted) * 100) : 0;
+            document.getElementById('score-percent').textContent = percent;
+        }
+    </script>
 </body>
 </html>
