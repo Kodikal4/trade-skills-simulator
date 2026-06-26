@@ -236,7 +236,10 @@
     </div>
 
     <script>
-        const BACKEND_URL = 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
+        // Dynamically point to localhost if debugging locally, otherwise use the live site
+        const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : 'https://trade-skills-admin-ffghcugjgaa2azb0.centralus-01.azurewebsites.net';
 
         // Central System State Machine Logic Engine
         let quizState = {
@@ -248,7 +251,6 @@
             timeStarted: null,
             timeFinished: null,
             userToken: null,
-            // 🚀 NEW: Array to track user responses silently without showing instant feedback
             userSelections: [] 
         };
 
@@ -296,14 +298,13 @@
                 quizState.currentQuestionIndex = 0;
                 quizState.totalCorrect = 0;
                 quizState.totalAttempted = 0;
-                quizState.userSelections = []; // Clear previous run selections
+                quizState.userSelections = []; 
                 quizState.timeStarted = new Date();
 
                 document.getElementById('sector-selection-view').style.display = 'none';
                 document.getElementById('dashboard-view').style.display = 'none';
                 document.getElementById('quiz-view').style.display = 'block';
                 
-                // HIDE live scoreboard from top deck during active exam run
                 document.getElementById('scoreboard').style.display = 'none';
                 
                 renderActiveStep();
@@ -324,11 +325,10 @@
             document.getElementById('quiz-symptom').textContent = currentItem.symptom || 'No logged symptoms.';
             document.getElementById('quiz-question').textContent = currentItem.question ? `Diagnostic Query: ${currentItem.question}` : 'Analyze metrics and isolate the root failure mode:';
             
-            // Explicitly keep explanation drawer hidden during active selection tracks
             document.getElementById('quiz-explanation-drawer').style.display = 'none';
             
             const nextBtn = document.getElementById('next-question-btn');
-            nextBtn.style.display = 'none'; // Only shows up once a selection choice maps
+            nextBtn.style.display = 'none'; 
 
             const container = document.getElementById('quiz-choices-container');
             container.innerHTML = '';
@@ -340,7 +340,6 @@
                     btn.className = 'choice-btn';
                     btn.textContent = option;
                     
-                    // Reapply baseline highlight if user backs up or views it, else neutral styling
                     btn.style.background = 'var(--bg-main)';
                     btn.style.borderColor = 'var(--border-color)';
                     
@@ -358,17 +357,14 @@
         function saveSelectionLocally(clickedButton, selectedValue) {
             const container = document.getElementById('quiz-choices-container');
             
-            // Visually toggle active selection states without green/red confirmation tints
             Array.from(container.children).forEach(btn => {
                 btn.style.background = 'var(--bg-main)';
                 btn.style.borderColor = 'var(--border-color)';
             });
             
-            // Subtle accent border change just to confirm what button they currently have toggled active
             clickedButton.style.borderColor = 'var(--accent-blue)';
             clickedButton.style.background = 'rgba(56, 189, 248, 0.05)';
 
-            // Save or update selection at current array index point
             quizState.userSelections[quizState.currentQuestionIndex] = selectedValue;
 
             const nextBtn = document.getElementById('next-question-btn');
@@ -381,7 +377,6 @@
         }
 
         function goToNextQuestion() {
-            // If user skipped or didn't select something explicitly, register as blank
             if (!quizState.userSelections[quizState.currentQuestionIndex]) {
                 quizState.userSelections[quizState.currentQuestionIndex] = "";
             }
@@ -394,11 +389,10 @@
             }
         }
 
-        // Post-Quiz Processing Terminal Builder (Calculates scores at the very end)
+        // Post-Quiz Processing Terminal Builder
         async function processAndCompileFinalMetrics() {
             quizState.timeFinished = new Date();
             
-            // Evaluate scores out of sight
             quizState.totalAttempted = quizState.filteredQuestions.length;
             quizState.totalCorrect = 0;
 
@@ -414,7 +408,6 @@
                     quizState.totalCorrect++;
                 }
 
-                // Build a matching dark layout card for every single question answered
                 const reviewCard = document.createElement('div');
                 reviewCard.style.background = 'rgba(30, 41, 59, 0.5)';
                 reviewCard.style.border = `1px solid ${isCorrect ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`;
@@ -450,14 +443,13 @@
 
                     <div style="padding: 0.75rem; border-radius: 6px; border-left: 4px solid var(--accent-green); background: rgba(15, 23, 42, 0.6);">
                         <strong style="color: var(--accent-green); display: block; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.25rem;">Explanation Matrix:</strong>
-                        <span style="color: #94a3b8; font-size: 0.9rem; font-style: italic;">${question.explanation || 'No structural breakdown documentation written for this entity item.'}</span>
+                        <span style="color: #94a3b8; font-size: 0.9rem; font-style: italic;">${question.explanation || 'No structural documentation written for this item.'}</span>
                     </div>
                 `;
                 
                 reviewContainer.appendChild(reviewCard);
             });
 
-            
             const totalDurationMs = quizState.timeFinished - quizState.timeStarted;
             const totalSeconds = Math.floor(totalDurationMs / 1000);
             const displayMinutes = Math.floor(totalSeconds / 60);
@@ -469,7 +461,6 @@
             const startTimeStr = quizState.timeStarted.toLocaleTimeString([], formatConfig);
             const endTimeStr = quizState.timeFinished.toLocaleTimeString([], formatConfig);
                     
-            // Inject metrics straight into View 3 Dashboard Panels
             document.getElementById('dash-sector').textContent = quizState.activeSector;
             document.getElementById('dash-score').textContent = scoreString;
             document.getElementById('dash-accuracy').textContent = `${accuracyPercent}%`;
@@ -477,17 +468,15 @@
             document.getElementById('dash-end').textContent = endTimeStr;
             document.getElementById('dash-duration').textContent = `${displayMinutes}m ${displaySeconds}s`;
 
-            // Swap visible interface layers
             document.getElementById('quiz-view').style.display = 'none';
             document.getElementById('dashboard-view').style.display = 'block';
 
-            // Ship metrics payload to Azure PostgreSQL instance database via secure tunnel
             try {
-             await fetch(`${BACKEND_URL}/api/quiz-history`, {
+                 await fetch(`${BACKEND_URL}/api/quiz-history`, {
                     method: 'POST',
                     headers: { 
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${quizState.userToken}`
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${quizState.userToken}`
                     },
                     body: JSON.stringify({
                         sector_taken: quizState.activeSector,
@@ -498,7 +487,7 @@
                         total_duration_seconds: totalSeconds
                     })
                 });
-                console.log("📊 Performance metrics logged securely to Azure PostgreSQL instance.");
+                console.log("📊 Performance metrics logged securely.");
             } catch(err) {
                 console.error("Failed to back up tracking array.", err);
             }
@@ -508,6 +497,6 @@
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('sector-selection-view').style.display = 'block';
         }
-  </script>
+    </script>
 </body>
 </html>
