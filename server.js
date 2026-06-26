@@ -1,26 +1,48 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
-const cors = require('cors'); 
-// 🚀 IMPORT GOOGLE AUTH LIBRARY
+const cors = require('cors');
 const { OAuth2Client } = require('google-auth-library');
 
+// 1. Initialize the app instance first so it can be used below
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Replace this string with your Google Client ID from the Cloud Console
-// Best practice: Store this in process.env.GOOGLE_CLIENT_ID on your Azure App Service Configuration tab
+// 2. Configure CORS middleware now that 'app' is initialized
+const allowedOrigins = [
+  'https://kodikal4.github.io',
+  'http://localhost:8000',
+  'http://127.0.0.1:8000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
+// 3. Set up Google Auth and parsing
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-app.use(cors());
 app.use(express.json());
 
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.WEBSITE_HOSTNAME;
+
+// 4. Database Setup
 const pool = new Pool({
     connectionString: process.env.AZURE_POSTGRESQL_CONNECTION_STRING,
-    ssl: {
-        rejectUnauthorized: false 
-    }
+    user: isProduction ? undefined : 'postgres',
+    password: isProduction ? undefined : 'YOUR_LOCAL_POSTGRES_PASSWORD',
+    ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
 // Database schema auto-initialization
@@ -48,7 +70,7 @@ const initDb = async () => {
                 time_started TEXT NOT NULL,
                 time_finished TEXT NOT NULL,
                 total_duration_seconds INTEGER NOT NULL,
-                user_email TEXT NOT NULL, -- Added tracking to tie history to human profiles
+                user_email TEXT NOT NULL, 
                 date_recorded TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -69,20 +91,18 @@ async function verifyHumanToken(req, res, next) {
     const token = authHeader.split(' ')[1];
 
     try {
-        // Handshake validation: Google decrypts and validates token authenticity
         const ticket = await googleClient.verifyIdToken({
             idToken: token,
             audience: GOOGLE_CLIENT_ID
         });
         const payload = ticket.getPayload();
         
-        // Append user context securely onto request pipeline
         req.user = {
             email: payload.email,
             name: payload.name
         };
         
-        next(); // Authorization cleared. Proceed to operational route handler.
+        next(); 
     } catch (err) {
         console.error('❌ Security Token Validation Rejected:', err.message);
         return res.status(403).json({ error: 'Access Denied: Invalid signature token.' });
@@ -93,7 +113,7 @@ async function verifyHumanToken(req, res, next) {
 // API ROUTE CHANNELS
 // ==========================================
 
-// Fetch questions (Public read for authenticated frontend runtime)
+// Fetch questions
 app.get('/api/trades', async (_req, res) => {
     try {
         const result = await pool.query('SELECT * FROM trade_sectors ORDER BY id DESC;');
@@ -104,10 +124,10 @@ app.get('/api/trades', async (_req, res) => {
     }
 });
 
-// Insert metrics dashboard rows (🔒 PROTECTED BY AUTHENTICATION ROUTE MIDDLEWARE)
+// Insert metrics dashboard rows
 app.post('/api/quiz-history', verifyHumanToken, async (req, res) => {
     const { sector_taken, score_achieved, accuracy_percent, time_started, time_finished, total_duration_seconds } = req.body;
-    const authenticatedUserEmail = req.user.email; // Extracted directly from secure Google payload
+    const authenticatedUserEmail = req.user.email; 
 
     try {
         const result = await pool.query(
@@ -122,7 +142,7 @@ app.post('/api/quiz-history', verifyHumanToken, async (req, res) => {
     }
 });
 
-// Admin Route (🔒 PROTECTED: Only humans can seed questions)
+// Admin Route
 app.post('/api/trades', verifyHumanToken, async (req, res) => {
     const { sector, component, symptom, question, failure_mode, explanation, choices } = req.body;
     try {
@@ -143,5 +163,5 @@ app.get('/', (_req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Secure Node backend listening on port ${PORT}`);
+    console.log(`🚀 Secure Node backend listening on http://localhost:${PORT}`);
 });
